@@ -20,24 +20,29 @@ WALL_BACK_POS = (0, 0, -25)
 WALL_RIGHT_POS = (25, 0, 0)
 WALL_LEFT_POS = (-25, 0, 0)
 
-c_sock = socket.socket()
-c_sock.connect(('127.0.0.1',8201))
-print('connect sucsesfully!')
+#Data server/client
+IP_SERVER = '127.0.0.1'
+PORT_SERVER = 8201
 
+# c_sock = socket.socket()
+# c_sock.connect((IP_SERVER,PORT_SERVER))
+# print('connect sucsesfully!')
 
-check_first_msg = False
-
-while not check_first_msg:
-    try:
-        # data = c_sock.recv(1024).decode()
-        data = protocol.recv_by_size(c_sock)
-        print(data)
-        if ('OK' in data):
-            check_first_msg = True
-            break
-    except:
-        pass
-print('start')
+def start_connect_server():
+    pass
+    # check_first_msg = False
+    #
+    # while not check_first_msg:
+    #     try:
+    #         # data = c_sock.recv(1024).decode()
+    #         data = protocol.recv_by_size(c_sock)
+    #         print(data)
+    #         if ('OK' in data):
+    #             check_first_msg = True
+    #             break
+    #     except:
+    #         pass
+    # print('Connected To Server!')
 
 # def send_msg():
 #     time.sleep(3)
@@ -69,7 +74,6 @@ gun = Entity(model='Data/img/ak.obj', scale=0.1)
 gun_parent = Entity(parent=player, position=(0.7, 1, 1))
 gun.parent = gun_parent
 gun.rotation = (0, 90, 0)
-
 
 #bullet
 # blt = Entity(model='sphere', color=color.red, scale=0.1)
@@ -103,18 +107,18 @@ def wall_move_zone():
 
 
 def send_and_recv():
-    # pass
-    protocol.send_with_size(c_sock, f"ENMP,{player.x},{player.Y},{player.Z}")
-    try:
-        data = protocol.recv_by_size(c_sock)
-    except:
-        pass
-    if data:
-        data = data.split(',')
-        if(data[0] == 'ENMP'):
-            print(data[1:])
-            anemy.x, anemy.y, anemy.z = float(data[1]), float(data[2]), float(data[3])
-            print(anemy.x, anemy.y, anemy.z)
+    pass
+    # protocol.send_with_size(c_sock, f"ENMP,{player.x},{player.Y},{player.Z}")
+    # try:
+    #     data = protocol.recv_by_size(c_sock)
+    # except:
+    #     pass
+    # if data:
+    #     data = data.split(',')
+    #     if(data[0] == 'ENMP'):
+    #         print(data[1:])
+    #         anemy.x, anemy.y, anemy.z = float(data[1]), float(data[2]), float(data[3])
+    #         print(anemy.x, anemy.y, anemy.z)
 
 def check_keys():
     #change height / ctrl
@@ -284,9 +288,6 @@ def update():
     if held_keys['escape']:
         application.quit()
 
-
-
-# run the game loop
-if(__name__ == '__main__'):
-    app.run()
-    # c_sock.close()
+# start_connect_server()
+app.run()
+# c_sock.close()
