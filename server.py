@@ -10,10 +10,10 @@ def handle_client(client, address, clients):
             print(index_msg)
             if(len(clients) == 2):
                 if(index_msg == 0):
-                    # for c in clients:
-                    #     print(c)
-                    protocol.send_with_size(client, 'OK')
-                        # c.sendall('OK'.encode())
+                    for c in clients:
+                        print(c)
+                        protocol.send_with_size(c, 'OK')
+                    # c.sendall('OK'.encode())
                 else:
                     # data = client.recv(1024).decode()
                     data = protocol.recv_by_size(client)
@@ -37,7 +37,7 @@ def handle_client(client, address, clients):
 def run_server():
     global index_msg
     host = '0.0.0.0'
-    port = 8201
+    port = 8202
     index_msg = 0
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

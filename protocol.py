@@ -1,5 +1,5 @@
 SIZE_LENGTH_BYTES = 8
-PORT = 8820
+PORT = 8200
 TCP_DEBUG = True
 
 def recv_by_size(sock, return_type="string"):

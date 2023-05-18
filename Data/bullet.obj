@@ -1,12 +1,4 @@
-# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
-# File Created: 05.10.2013 21:05:00
-
 mtllib bullet.mtl
-
-#
-# object Line062
-#
-
 v  -11.7029 2.0074 -10.3593
 v  -11.7407 2.3120 -10.3385
 v  -11.7573 2.3110 -10.3333
