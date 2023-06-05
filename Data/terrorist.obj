@@ -1,3 +1,5 @@
+# This file uses centimeters as units for non-parametric coordinates.
+
 mtllib terrorist.mtl
 g default
 v 5.828877 27.518843 -2.882771
