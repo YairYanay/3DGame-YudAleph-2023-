@@ -1,9 +1,8 @@
 SIZE_LENGTH_BYTES = 8
-PORT = 8200
 TCP_DEBUG = True
 
 def recv_by_size(sock, return_type="string"):
-    sock.settimeout(3.0)
+    sock.settimeout(0.001)
     str_size = b""
     data_len = 0
     while len(str_size) < SIZE_LENGTH_BYTES:
@@ -22,7 +21,6 @@ def recv_by_size(sock, return_type="string"):
                 data = b""
                 break
             data += _d
-
     if TCP_DEBUG and len(str_size) > 0:
         data_to_print = data[:]
         if type(data_to_print) == bytes:
@@ -40,15 +38,14 @@ def recv_by_size(sock, return_type="string"):
 
 
 def send_with_size(sock, data):
-    # len_data = len(data)
-    sock.settimeout(3.0)
+    sock.settimeout(0.001)
     len_data = str(len(data)).zfill(SIZE_LENGTH_BYTES - 1) + "|"
     len_data = len_data.encode('ISO-8859-1')
     if type(data) != bytes:
         data = data.encode('ISO-8859-1')
     data = len_data + data
     sock.send(data)
-    print('send: ' + data.decode())
+    # print('send: ' + data.decode())
 
     if TCP_DEBUG and len(len_data) > 0:
         data = data[:]

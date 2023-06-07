@@ -1,32 +1,34 @@
 from ursina import *
 from ursina.prefabs.first_person_controller import FirstPersonController
 import socket, protocol
-import random
 
 # DATA
 #map pos
-MAP_X_POS = 50
-MAP_Y_POS = 0
-MAP_Z_POS = 50
+GROUND_SIZE = 50
 
-#player pos
-# PLAYER_X_POS = 1
-PLAYER_Y_POS = 1
-PLAYER_Z_POS = 0
-
-#wall pos = MIDDLE OF THE WALL
+#wall pos = MIDDLE OF THE WALL adn size
 WALL_FORWARD_POS = (0, 0, 25)
 WALL_BACK_POS = (0, 0, -25)
 WALL_RIGHT_POS = (25, 0, 0)
 WALL_LEFT_POS = (-25, 0, 0)
 
+WALL_SIZE = 3
+
 #Data server/client
 IP_SERVER = '127.0.0.1'
 PORT_SERVER = 8201
 
+def handle_request(data):
+    #SDGC = send game capacity
+    if data[:4] == "SDGC":
+        protocol.send_with_size(c_sock, data)
+    #PLYP = player position
+    elif data[:4] == "ENMP":
+        # print(f"ENMP,{player.x},{player.Y},{player.Z}")
+        protocol.send_with_size(c_sock, f"ENMP,{player.x},{player.Y},{player.Z}")
 
-def send_and_recv():
-    protocol.send_with_size(c_sock, f"ENMP,{player.x},{player.Y},{player.Z}")
+
+def handle_server():
     data = ""
     try:
         data = protocol.recv_by_size(c_sock)
@@ -34,19 +36,30 @@ def send_and_recv():
         pass
 
     if data:
-        if(data[:4] == 'ENMP'):
-            data = data.split(',')
-            # print(data[1:])
-            enemy.x, enemy.y, enemy.z = float(data[1]), float(data[2]), float(data[3])
-            # print(anemy.x, anemy.y, anemy.z)
+        #STGM = start game
+        if data[:4] == "STGM":
+            print('Connected To Server!')
 
-        if(data[:4] == 'EXIT'):
+        #RCGC = recv game capacity
+        elif data[:4] == "RCGC":
+            print("asdknasjkda")
+            exit()
+
+        #ENMP = enemy position
+        elif(data[:4] == 'ENMP'):
+            data = data.split(',')
+            enemy.x, enemy.y, enemy.z = float(data[1]), float(data[2]), float(data[3])
+            data = ",".join(data)
+
+        elif(data[:4] == 'EXIT'):
+            print("exit!!!")
             c_sock.close()
             application.quit()
 
+    return data
 
 def send_exit_cmd():
-    protocol.send_with_size(c_sock, f"EXIT")
+    protocol.send_with_size(c_sock, "EXIT")
     print('send exit data to server!')
 
 
@@ -55,12 +68,13 @@ def on_bullet_hit(hit):
     # print("Bullet hit at:", hit.world_point)
 
 def fire_bullet():
-    bullet = Entity(model='Data/img/bullet.obj', color=color.red, scale=0.01)
+    bullet = Entity(model='Data/bullet.obj', color=color.red, scale=0.01)
     bullet.position = player.camera_pivot.world_position
     bullet.rotation = player.camera_pivot.world_rotation
 
     hit_info = raycast(bullet.position, bullet.forward, ignore=[bullet])
     if hit_info.hit:
+        print(hit_info.entity)
         if hit_info.entity == enemy:
             print("Enemy Hit!")
         bullet.animate_position(hit_info.world_point, duration=0.2, curve=curve.linear)  # Animate bullet to the point of collision
@@ -94,44 +108,45 @@ def input(key):
 
 
 def update():
-    send_and_recv()
+    try:
+        handle_request("ENMP")
+        handle_server()
 
-    if held_keys['escape']:
-        application.quit()
+    except:
+        print('Closing client...')
+        c_sock.close()
+        exit()
 
-def start_connect_server():
-    check_first_msg = False
 
-    while not check_first_msg:
-        try:
-            # data = c_sock.recv(1024).decode()
-            data = protocol.recv_by_size(c_sock)
-            print(data)
-            if ('OK' in data):
-                check_first_msg = True
-                break
-        except:
-            pass
-    print('Connected To Server!')
-
-def main():
+def main(game_capacity):
     global c_sock, player, enemy, gun, ground
     # connect and send first msg from and to server
-    c_sock = socket.socket()
-    c_sock.connect((IP_SERVER, PORT_SERVER))
-    print('connect sucsesfully!')
-    start_connect_server()
+    try:
+        c_sock = socket.socket()
+        c_sock.connect((IP_SERVER, PORT_SERVER))
+        print('connect sucsesfully to the server!')
+        handle_request(f"SDGC,{game_capacity}")
+        print("waiting to players!")
+        pos_player = handle_server()
+        while pos_player[:4] != "STGM":
+            pos_player = handle_server()
+        print("game starting!!")
+
+    except:
+        print("server down!")
+        exit()
 
     # initialize Ursina
     app = Ursina(borderless=False)
     window.size = (800, 600)
 
+    pos = [int(x) for x in pos_player.split(',')[1:]]
     # players
-    player = FirstPersonController(speed=5, position=(random.randint(1, 10), PLAYER_Y_POS, PLAYER_Z_POS))
-    enemy = Entity(model='Data/img/terrorist.obj',collider="box", name="enemy", scale=(0.1, 0.07, 0.1))
+    player = FirstPersonController(speed=5, position=tuple(pos))
+    enemy = Entity(model='Data/terrorist.obj',collider="box", name="enemy", scale=(0.1, 0.07, 0.1))
 
     # floor
-    ground = Entity(model='plane', scale=(MAP_X_POS, MAP_Y_POS, MAP_Z_POS), color=color.lime, texture="grass",
+    ground = Entity(model='plane', scale=(GROUND_SIZE, 1, GROUND_SIZE), color=color.lime, texture="grass",
                     texture_scale=(100, 100),
                     collider='mesh',name ="ground")
 
@@ -139,13 +154,10 @@ def main():
     sky = Sky(collider="box", name='sky')
 
     # gun
-    gun = Entity(model='Data/img/ak.obj', scale=0.1)
+    gun = Entity(model='Data/ak.obj', scale=0.1)
     gun_parent = Entity(parent=player, position=(0.7, 1, 1))
     gun.parent = gun_parent
     gun.rotation = (0, 90, 0)
-
-    wall_1 = Entity(name ="wall",model="cube", collider="box", position=(-8, 0, 0), scale=(8, 5, 1), rotation=(0, 0, 0),
-                    texture="brick", texture_scale=(5, 5), color=color.rgb(255, 128, 0))
 
     # create limits walls
     wall_forward = Entity(model='quad', collider="box", name='limit1', color=color.rgb(255, 128, 0), scale=(50, 5), position=WALL_FORWARD_POS,
@@ -159,4 +171,6 @@ def main():
 
     app.run()
 
-main()
+if __name__ == "__main__":
+    game_capacity = int(sys.argv[1])
+    main(game_capacity)
