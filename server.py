@@ -3,6 +3,9 @@ import threading
 import protocol
 import random
 
+#data
+POINT_END_TAME = 5
+
 class Game:
     def __init__(self, game_capacity):
         self.game_start = False
@@ -10,6 +13,8 @@ class Game:
         self.numPlayers = 0
         self.police_players = []   #list with sock and addres
         self.robber_players = []   #list with sock and addres
+        self.point_game = [0, 0]   #first police and second robber point
+        self.players_deads = []
 
     def add_player(self, player):
         if len(self.police_players) < self.game_capacity//2:
@@ -17,7 +22,7 @@ class Game:
             self.numPlayers += 1
 
         elif len(self.robber_players) < self.game_capacity//2:
-            self.police_players.append(player)
+            self.robber_players.append(player)
             self.numPlayers += 1
 
         if self.game_capacity == self.numPlayers:
@@ -38,6 +43,19 @@ class Game:
     def check_player_police(self, player):
         return player in self.police_players
 
+    def add_point_team(self, team_won):
+        if team_won == "police":
+            self.point_game[0] += 1
+
+        else:
+            self.point_game[1] += 1
+
+        if POINT_END_TAME in self.point_game:
+            return True
+        return False
+
+    def reset_players_dead(self):
+        self.players_deads = []
 
 class GameHandler:
     def __init__(self):
@@ -79,19 +97,43 @@ class GameHandler:
 
     def get_first_pos(self, player):
         game = self.check_player_game(player)
-        if game.check_player_police(player):
-            posx = random.randint(15, 24)
-            posy = 1
-            posz = random.randint(15, 24)
+        posx = random.randint(15, 24)
+        posy = 0
+        posz = random.randint(15, 24)
+        if not game.check_player_police(player):
+            posx = -posx
+            posz = -posz
 
-        else:
-            posx = random.randint(-15, -24)
-            posy = 1
-            posz = random.randint(-15, -24)
         return posx, posy, posz
 
     def check_length(self):
         return len(self.games)
+
+    def check_number_player(self, player):
+        game = self.check_player_game(player)
+        index = 0
+        for i in game.police_players + game.robber_players:
+            index += 1
+            if player == i:
+                return index
+        return 0
+
+    def player_dead(self, player):
+        game = self.check_player_game(player)
+        game.players_deads.append(player)
+        if len(game.players_deads) <= game.game_capacity - 1:
+            for client in game.police_players:
+                if client not in game.players_deads:
+                    return "police"
+            return "robber"
+        return ""
+
+    def team_win(self, player):
+        game = self.check_player_game(player)
+        for client in game.police_players:
+            if client not in game.players_deads:
+                return "police"
+        return "robber"
 
 
 # def handle_client(client, clients, index_msg):
@@ -157,7 +199,7 @@ def remove_game(client, games):
     games.remove_game(game)
     print('remove game!')
 
-def send_player_move(game, client, data):
+def send_other_players_data(game, client, data):
     for player in game.police_players + game.robber_players:
         if player != client:
             protocol.send_with_size(player[0],data)
@@ -190,6 +232,7 @@ def handle_client(client, data):
                         check_start_game = games.check_start_game(client)
                     posx, posy, posz = games.get_first_pos(client)
                     protocol.send_with_size(client[0], f'STGM,{posx},{posy},{posz}')
+                    protocol.send_with_size(client[0], f'NMPL,{games.check_number_player(client)}')
 
                 elif data[:4] == 'EXIT':
                     print(f'Client {client[1]} disconnected')
@@ -198,20 +241,49 @@ def handle_client(client, data):
 
                 #ENMP = Enemy position
                 elif data[:4] == "ENMP":
-                    send_player_move(games.check_player_game(client), client, data)
+                    send_other_players_data(games.check_player_game(client), client, data)
 
+                #BLTP = bullet position
+                elif data[:4] == 'BLTP':
+                    send_other_players_data(games.check_player_game(client), client, data)
 
                 #GMED = Game End
                 elif data[:4] == 'GMED':
                     remove_game(client, games)
+
+                # elif data[:4] == 'HTPL':
+                #     pass
+
+
+                elif data[:4] == 'PLYD':
+                    send_other_players_data(games.check_player_game(client), client, f"PLYD")
+
+                elif data[:4] == 'IMDD':
+                    team_win = games.player_dead(client)
+                    if team_win:
+                        print(team_win + " win!")
+                        game = games.check_player_game(client)
+                        check_end_game = game.add_point_team(team_win)
+                        if check_end_game:
+                            for player in game.police_players + game.robber_players:
+                                protocol.send_with_size(player[0], f"TMWN,{team_win}")
+                                protocol.send_with_size(player[0], 'EXIT')
+                            games.remove_game(game)
+                        else:
+                            i = 1
+                            for player in game.police_players + game.robber_players:
+                                protocol.send_with_size(player[0], f"TMWN,{team_win}")
+                                posx, posy, posz = games.get_first_pos(player)
+                                protocol.send_with_size(player[0], f'ENMP,{i},{posx},{posy},{posz}')
+                                i += 1
+                        game.reset_players_dead()
 
                 data = ""
 
 def run_server():
     global games
     host = '0.0.0.0'
-    port = 8201
-    index_msg = 0
+    port = 8200
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind((host, port))
