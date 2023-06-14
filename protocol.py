@@ -2,7 +2,7 @@ SIZE_LENGTH_BYTES = 8
 TCP_DEBUG = True
 
 def recv_by_size(sock, return_type="string"):
-    sock.settimeout(0.001)
+    sock.settimeout(0.0000000000000001)
     str_size = b""
     data_len = 0
     while len(str_size) < SIZE_LENGTH_BYTES:
@@ -28,7 +28,7 @@ def recv_by_size(sock, return_type="string"):
                 data_to_print = data_to_print.decode('ISO-8859-1')
             except (UnicodeDecodeError, AttributeError):
                 pass
-        # print(f"\nReceive({str_size})>>>{data_to_print}")
+        print(f"\nReceive({str_size})>>>{data_to_print}")
 
     if data_len != len(data):
         data=b"" # Partial data is like no data !
@@ -38,7 +38,7 @@ def recv_by_size(sock, return_type="string"):
 
 
 def send_with_size(sock, data):
-    sock.settimeout(0.001)
+    sock.settimeout(0.0000000000000001)
     len_data = str(len(data)).zfill(SIZE_LENGTH_BYTES - 1) + "|"
     len_data = len_data.encode('ISO-8859-1')
     if type(data) != bytes:
@@ -54,4 +54,4 @@ def send_with_size(sock, data):
                 data = data.decode('ISO-8859-1')
             except (UnicodeDecodeError, AttributeError):
                 pass
-        # print(f"\nSent({len_data})>>>{data}")
+        print(f"\nSent({len_data})>>>{data}")
